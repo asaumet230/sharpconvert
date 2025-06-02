@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Lato } from "next/font/google";
-import "./globals.css";
 
+import { Providers } from "@/store/Providers";
+
+import "./globals.css";
 
 const lato = Lato({
   subsets: ["latin"],
@@ -19,7 +21,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={`${lato.variable} antialiased`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   );

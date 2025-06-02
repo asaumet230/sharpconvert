@@ -4,16 +4,21 @@ import { useRef, useState } from 'react';
 
 import Image from 'next/image';
 import Swal from 'sweetalert2';
+import { FaTrashCan, FaUpload, FaBroom } from 'react-icons/fa6';
+import { FaSyncAlt } from 'react-icons/fa';
+
+import { useAppDispatch, useAppSelector } from '@/store';
 
 import { SpinnerLoadImages } from '..';
+import { isImagesLoad } from '@/store/imageComponentsLoad/imagesComponentsLoad';
 
 interface ImagePreview {
     file: File;
     url: string;
     originalSizeKB: number;
     convertedSizeKB?: number;
+    progress: number;
 }
-
 
 export const ImagesForm = () => {
 
@@ -23,7 +28,14 @@ export const ImagesForm = () => {
     const [filesToConvert, setFilesToConvert] = useState<FileList | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-   
+
+    const [globalProgress, setGlobalProgress] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+
+
+    const imagesLoad = useAppSelector(state => state.imagesComponentsLoad.isImagesLoad);
+    const dispatch = useAppDispatch();
+
     const allowedTypes = [
         'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
         'image/gif', 'image/bmp', 'image/avif', 'image/tiff', 'image/heic'
@@ -42,8 +54,22 @@ export const ImagesForm = () => {
             return;
         }
 
-        if (files.length > 30) {
-            Swal.fire('¡Ups!', 'Solo se permiten hasta 30 imágenes a la vez.', 'warning');
+        if (files.length > 20) {
+            Swal.fire('¡Ups!', 'Solo se permiten hasta 20 imágenes a la vez.', 'warning');
+            return;
+        }
+
+        const sameFormatImages = Array.from(files).every(file => {
+            const fileExt = file.name.split('.').pop()?.toLowerCase();
+            return fileExt === outputFormat.toLowerCase();
+        });
+
+        if (sameFormatImages) {
+            Swal.fire(
+                'Formato inválido',
+                `Todas las imágenes ya están en formato .${outputFormat}. Por favor selecciona un formato de salida diferente.`,
+                'warning'
+            );
             return;
         }
 
@@ -51,6 +77,7 @@ export const ImagesForm = () => {
             file,
             url: URL.createObjectURL(file),
             originalSizeKB: +(file.size / 1024).toFixed(2),
+            progress: 0
         }));
 
         setFilesToConvert(files);
@@ -83,6 +110,19 @@ export const ImagesForm = () => {
             return;
         }
 
+        setIsLoading(true);
+        setGlobalProgress(0);
+
+        let progress = 0;
+
+        const interval = setInterval(() => {
+
+            progress += Math.floor(Math.random() * 5) + 3;
+            setGlobalProgress(p => Math.min(progress, 95));
+            if (progress >= 95) clearInterval(interval);
+
+        }, 100);
+
         const formData = new FormData();
         formData.append('format', outputFormat);
 
@@ -95,9 +135,23 @@ export const ImagesForm = () => {
             body: formData,
         });
 
+
+        clearInterval(interval);
+        setGlobalProgress(100);
+
+        await new Promise(resolve => setTimeout(resolve, 400));
+
         const data = await res.json();
 
         if (data.urls) {
+
+            // const updatedPreviews = filePreviews.map((preview, index) => ({
+            //     ...preview,
+            //     convertedSizeKB: data.sizes[index]
+            // }));
+
+            // setFilePreviews(updatedPreviews);
+
             setUrls(data.urls);
             Swal.fire('¡Listo!', 'Las imágenes fueron convertidas con éxito.', 'success');
         } else {
@@ -108,26 +162,28 @@ export const ImagesForm = () => {
     return (
         <div className='flex flex-col items-center justify-center'>
 
-            <div className='mt-4'>
+            {
+                filePreviews.length <= 0 && (
+                    <div className='mt-4'>
 
-                <label className='font-semibold mr-5 text-2xl'>Formato de salida:</label>
-                <select
-                    className='p-4 font-semibold text-indigo-600 border-2 border-indigo-300 rounded-md text-lg'
-                    name='outputFormat'
-                    value={outputFormat}
-                    onChange={(e) => setOutputFormat(e.target.value)}
-                >
-                    <option value="webp">WEBP</option>
-                    <option value="png">PNG</option>
-                    <option value="jpg">JPG</option>
-                    <option value="jpeg">JPEG</option>
-                    <option value="gif">GIF</option>
-                    <option value="bmp">BMP</option>
-                    <option value="avif">AVIF</option>
-                </select>
-            </div>
-
-
+                        <label className='font-semibold mr-5 text-2xl'>Formato de salida:</label>
+                        <select
+                            className='p-4 font-semibold text-indigo-600 border-2 border-indigo-300 rounded-md text-lg'
+                            name='outputFormat'
+                            value={outputFormat}
+                            onChange={(e) => setOutputFormat(e.target.value)}
+                        >
+                            <option value="webp">WEBP</option>
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="jpeg">JPEG</option>
+                            <option value="gif">GIF</option>
+                            <option value="bmp">BMP</option>
+                            <option value="avif">AVIF</option>
+                        </select>
+                    </div>
+                )
+            }
 
             <input
                 type="file"
@@ -159,8 +215,9 @@ export const ImagesForm = () => {
 
                         <button
                             onClick={() => fileInputRef.current!.click()}
-                            className="mt-6 px-3 py-2 cursor-pointer bg-indigo-600 text-white rounded-md font-semibold hover:bg-indigo-700 transition">
-                            Seleccionar imágenes
+                            className="flex items-center mt-6 px-3 py-2 cursor-pointer bg-indigo-600 text-white rounded-md font-semibold hover:bg-indigo-700 transition">
+                            <FaUpload className="text-md mr-2" />
+                            <p>Seleccionar imágenes</p>
                         </button>
                     </div>
 
@@ -170,66 +227,98 @@ export const ImagesForm = () => {
             }
 
             {
-                filePreviews.length > 0 && (
+                imagesLoad && (
                     <div className='flex gap-4 justify-center w-7/12 my-10'>
                         <button
-                            className='cursor-pointer w-full px-3 py-2 font-semibold bg-yellow-400 text-black rounded-md text-lg hover:bg-yellow-500 transition-colors'
+                            className='flex justify-center items-center gap-2  cursor-pointer w-full p-3 font-semibold bg-yellow-400 text-black rounded-md text-base hover:bg-yellow-500 transition-colors'
                             onClick={handleConvert}>
-                            Convertir imágenes
+                            <FaSyncAlt className="text-sm" />
+                            <p>Convertir imágenes</p>
                         </button>
 
                         <button
-                            className='cursor-pointer w-full px-4 py-2 font-semibold bg-green-700 text-white rounded-md text-lg hover:bg-green-800 transition-colors'
+                            className='flex justify-center items-center gap-2 cursor-pointer w-full p-3 font-semibold bg-green-700 text-white rounded-md text-base hover:bg-green-800 transition-colors'
                             onClick={() => {
                                 setUrls([]);
                                 setFilePreviews([]);
                                 setFilesToConvert(null);
+                                dispatch(isImagesLoad(false));
                                 if (fileInputRef.current) fileInputRef.current.value = '';
                             }}>
+                            <FaBroom className="text-sm" />
                             Limpiar
                         </button>
                     </div>
-
                 )
             }
 
+            {
+                imagesLoad && (
+                    <div className="w-full max-w-3xl mt-6 space-y-4">
+                        {
+                            filePreviews.map((item, index) => (
 
+                                <div key={index} className="flex items-center bg-gray-50 border border-gray-300 p-2 rounded-lg shadow-md">
+
+                                    <img src={item.url} alt={item.file.name} className="w-12 h-12 object-cover rounded-lg mr-4 border border-gray-300" />
+
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-gray-500"> Nombre: {item.file.name}</p>
+
+                                        <p className="text-sm text-gray-500">
+                                            Tamaño: {item.originalSizeKB} KB
+                                        </p>
+                                    </div>
+
+
+                                    {isLoading && (
+                                        <div className="w-3/12 mr-5">
+                                            <div className="relative w-full h-6 bg-gray-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out"
+                                                    style={{ width: `${globalProgress}%` }}
+                                                />
+                                                <span className={`absolute inset-0 flex items-center justify-center ${globalProgress > 50 ? 'text-white' : 'text-gray-900'} font-semibold text-sm`}>
+                                                    {globalProgress}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {
+                                        globalProgress == 100 && (
+                                            <span className="text-green-600 text-sm mr-2 uppercase"> {outputFormat} | {item.convertedSizeKB} 60 KB</span>
+                                        )}
+
+                                    {
+                                        !isLoading && (
+                                            <button
+                                                onClick={() => handleRemoveFile(index)}
+                                                className="mr-4 text-red-700 hover:text-red-800 flex items-center justify-center cursor-pointer"
+                                                title="Eliminar">
+                                                <p className='text-sm font-medium'>Eliminar</p>
+                                                <FaTrashCan className="text-xl ml-2" />
+                                            </button>
+                                        )
+                                    }
+
+                                </div>
+                            ))}
+                    </div>)
+            }
 
             {
-                filePreviews.length > 0 ? (<div className="w-full max-w-3xl mt-6 space-y-4">
-                    {filePreviews.map((item, index) => (
-                        <div key={index} className="flex items-center bg-gray-50 border p-4 rounded-lg shadow-sm">
-                            <img src={item.url} alt={item.file.name} className="w-16 h-16 object-cover rounded mr-4 border" />
-                            <div className="flex-1">
-                                <p className="font-semibold text-gray-800">{item.file.name}</p>
-                                <p className="text-sm text-gray-500">
-                                    Original: {item.originalSizeKB} KB
-                                    {item.convertedSizeKB && (
-                                        <> → Convertido: <span className="text-green-600">{item.convertedSizeKB} KB</span></>
-                                    )}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => handleRemoveFile(index)}
-                                className="ml-4 text-red-600 hover:text-red-800 font-bold text-lg"
-                                title="Eliminar"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    ))}
-                </div>) : (<div className="text-center text-gray-500 text-lg font-medium">
-                    ¡Ningún archivo seleccionado!
+                filePreviews.length <= 0 && (<div className="text-center text-gray-500 text-sm font-medium">
+                    No has seleccionado ningún archivo. Puedes convertir hasta 20 imágenes por carga.
                 </div>)
             }
 
-
             {urls.length > 0 && (
                 <div>
-                    <h2 className="text-xl font-semibold mb-4">Imágenes convertidas:</h2>
+                    <h2 className="text-2xl mt-10 mb-4 text-center font-bold ">Imágenes convertidas:</h2>
                     <div className="flex flex-wrap justify-center">
                         {urls.map((url, i) => (
-                            <img key={i} src={url} alt={`img-${i}`} style={{ maxWidth: 200, margin: 10 }} />
+                            <img key={i} src={url} alt={`img-${i}`} style={{ maxWidth: 150, margin: 10 }} />
                         ))}
                     </div>
                 </div>

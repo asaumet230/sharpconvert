@@ -1,10 +1,13 @@
 'use client'
 
 import { useEffect, useState } from "react";
+import { useAppDispatch } from "@/store";
+import { isImagesLoad } from "@/store/imageComponentsLoad/imagesComponentsLoad";
 
 export const SpinnerLoadImages = () => {
 
   const [uploadProgress, setUploadProgress] = useState(0);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
 
@@ -16,6 +19,13 @@ export const SpinnerLoadImages = () => {
       return () => clearTimeout(timer);
     }
 
+  }, [uploadProgress]);
+
+
+  useEffect(() => {
+    if (uploadProgress === 100) {
+      dispatch(isImagesLoad(true));
+    }
   }, [uploadProgress]);
 
   return (
