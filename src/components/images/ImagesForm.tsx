@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 
 import Image from 'next/image';
 import Swal from 'sweetalert2';
-import { FaTrashCan, FaUpload, FaBroom } from 'react-icons/fa6';
+import { FaTrashCan, FaUpload, FaBroom, FaDownload } from 'react-icons/fa6';
 import { FaSyncAlt } from 'react-icons/fa';
 
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -27,6 +27,7 @@ export const ImagesForm = () => {
     const [filePreviews, setFilePreviews] = useState<ImagePreview[]>([]);
     const [filesToConvert, setFilesToConvert] = useState<FileList | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [conversionFinished, setConversionFinished] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [globalProgress, setGlobalProgress] = useState(0);
@@ -37,8 +38,11 @@ export const ImagesForm = () => {
     const dispatch = useAppDispatch();
 
     const allowedTypes = [
-        'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-        'image/gif', 'image/bmp', 'image/avif', 'image/tiff', 'image/heic'
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'image/avif',
     ];
 
     const validateAndStoreFiles = (files: FileList) => {
@@ -50,7 +54,7 @@ export const ImagesForm = () => {
 
         const invalidFiles = Array.from(files).filter(file => !allowedTypes.includes(file.type));
         if (invalidFiles.length > 0) {
-            Swal.fire('Formato inválido', 'Solo se permiten imágenes en formato jpg, jpeg, png, webp, gif, bmp, avif, tiff y heic.', 'error');
+            Swal.fire('Formato inválido', 'Solo se permiten imágenes en formato jpg, jpeg, png, webp y avif', 'error');
             return;
         }
 
@@ -130,7 +134,7 @@ export const ImagesForm = () => {
             formData.append('imagenes', file);
         });
 
-        const res = await fetch('/api/images', {
+        const res = await fetch('/api/images-test', {
             method: 'POST',
             body: formData,
         });
@@ -143,21 +147,82 @@ export const ImagesForm = () => {
 
         const data = await res.json();
 
-        if (data.urls) {
+        if (data.files) {
 
-            // const updatedPreviews = filePreviews.map((preview, index) => ({
-            //     ...preview,
-            //     convertedSizeKB: data.sizes[index]
-            // }));
+            const updatedPreviews = filePreviews.map((preview, index) => ({
+                ...preview,
+                convertedSizeKB: data.files[index]?.sizeKB ?? 0
+            }));
 
-            // setFilePreviews(updatedPreviews);
+            setConversionFinished(true);
+            setFilePreviews(updatedPreviews);
+            setUrls(data.files.map((f: any) => `data:image/${outputFormat};base64,${f.base64}`));
 
-            setUrls(data.urls);
             Swal.fire('¡Listo!', 'Las imágenes fueron convertidas con éxito.', 'success');
         } else {
             Swal.fire('Error', 'Hubo un problema al convertir las imágenes.', 'error');
         }
     };
+
+    const handleDownloadAllAsZip = async () => {
+        if (!filesToConvert || filesToConvert.length === 0) {
+            Swal.fire('¡Ups!', 'Primero debes seleccionar imágenes válidas.', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('format', outputFormat);
+
+        Array.from(filesToConvert).forEach(file => {
+            formData.append('imagenes', file); // Este campo es leído por el backend
+        });
+
+        const response = await fetch('/api/download-zip', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            Swal.fire('Error', 'No se pudo descargar el archivo ZIP.', 'error');
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'imagenes-convertidas.zip';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+
+
+    const handleDownloadByUrl = (url: string, filename: string) => {
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleReset = () => {
+        setUrls([]);
+        setFilePreviews([]);
+        setOutputFormat('webp');
+        setFilesToConvert(null);
+        setConversionFinished(false);
+        setIsDragging(false);
+        setIsLoading(false);
+        setGlobalProgress(0);
+        dispatch(isImagesLoad(false));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
 
     return (
         <div className='flex flex-col items-center justify-center'>
@@ -171,14 +236,11 @@ export const ImagesForm = () => {
                             className='p-4 font-semibold text-indigo-600 border-2 border-indigo-300 rounded-md text-lg'
                             name='outputFormat'
                             value={outputFormat}
-                            onChange={(e) => setOutputFormat(e.target.value)}
-                        >
+                            onChange={(e) => setOutputFormat(e.target.value)}>
                             <option value="webp">WEBP</option>
                             <option value="png">PNG</option>
                             <option value="jpg">JPG</option>
                             <option value="jpeg">JPEG</option>
-                            <option value="gif">GIF</option>
-                            <option value="bmp">BMP</option>
                             <option value="avif">AVIF</option>
                         </select>
                     </div>
@@ -227,7 +289,7 @@ export const ImagesForm = () => {
             }
 
             {
-                imagesLoad && (
+                imagesLoad && !conversionFinished && (
                     <div className='flex gap-4 justify-center w-7/12 my-10'>
                         <button
                             className='flex justify-center items-center gap-2  cursor-pointer w-full p-3 font-semibold bg-yellow-400 text-black rounded-md text-base hover:bg-yellow-500 transition-colors'
@@ -238,18 +300,29 @@ export const ImagesForm = () => {
 
                         <button
                             className='flex justify-center items-center gap-2 cursor-pointer w-full p-3 font-semibold bg-green-700 text-white rounded-md text-base hover:bg-green-800 transition-colors'
-                            onClick={() => {
-                                setUrls([]);
-                                setFilePreviews([]);
-                                setFilesToConvert(null);
-                                dispatch(isImagesLoad(false));
-                                if (fileInputRef.current) fileInputRef.current.value = '';
-                            }}>
+                            onClick={handleReset}>
                             <FaBroom className="text-sm" />
                             Limpiar
                         </button>
                     </div>
                 )
+            }
+            {
+                imagesLoad && conversionFinished && (<div className='flex gap-4 justify-center w-7/12 my-10'>
+                    <button
+                        className='flex justify-center items-center gap-2 cursor-pointer w-full p-3 font-semibold bg-blue-600 text-white rounded-md text-base hover:bg-blue-700 transition-colors'
+                        onClick={handleDownloadAllAsZip}>
+                        <FaDownload className="text-sm" />
+                        <p>Descargar todas</p>
+                    </button>
+
+                    <button
+                        className='flex justify-center items-center gap-2 cursor-pointer w-full p-3 font-semibold bg-purple-700 text-white rounded-md text-base hover:bg-purple-800 transition-colors'
+                        onClick={handleReset}>
+                        <FaSyncAlt className="text-sm" />
+                        <p>Convertir más</p>
+                    </button>
+                </div>)
             }
 
             {
@@ -263,7 +336,7 @@ export const ImagesForm = () => {
                                     <img src={item.url} alt={item.file.name} className="w-12 h-12 object-cover rounded-lg mr-4 border border-gray-300" />
 
                                     <div className="flex-1">
-                                        <p className="font-semibold text-gray-500"> Nombre: {item.file.name}</p>
+                                        <p className="text-sm font-semibold text-gray-500"> Nombre: {item.file.name}</p>
 
                                         <p className="text-sm text-gray-500">
                                             Tamaño: {item.originalSizeKB} KB
@@ -272,7 +345,7 @@ export const ImagesForm = () => {
 
 
                                     {isLoading && (
-                                        <div className="w-3/12 mr-5">
+                                        <div className="w-3/12 mx-5">
                                             <div className="relative w-full h-6 bg-gray-200 rounded-full overflow-hidden">
                                                 <div
                                                     className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out"
@@ -286,9 +359,20 @@ export const ImagesForm = () => {
                                     )}
 
                                     {
-                                        globalProgress == 100 && (
-                                            <span className="text-green-600 text-sm mr-2 uppercase"> {outputFormat} | {item.convertedSizeKB} 60 KB</span>
-                                        )}
+                                        globalProgress === 100 && urls[index] && (
+                                            <div className='flex flex-col justify-center items-center mr-2 ml-5'>
+                                                <button
+                                                    onClick={() => handleDownloadByUrl(urls[index], filePreviews[index].file.name.split('.')[0] + '.' + outputFormat)}
+                                                    className='flex items-center justify-center cursor-pointer text-white py-0.5 px-3 mb-0.5 border rounded-lg bg-blue-600 hover:bg-blue-700'>
+                                                    <span className='text-sm'>Descargar</span>
+                                                    <FaDownload className="text-sm ml-1" />
+                                                </button>
+                                                <span className="text-green-600 text-center text-sm uppercase">
+                                                    {outputFormat} | {filePreviews[index].convertedSizeKB ?? '...'} KB
+                                                </span>
+                                            </div>
+                                        )
+                                    }
 
                                     {
                                         !isLoading && (
@@ -314,15 +398,38 @@ export const ImagesForm = () => {
             }
 
             {urls.length > 0 && (
-                <div>
-                    <h2 className="text-2xl mt-10 mb-4 text-center font-bold ">Imágenes convertidas:</h2>
+                <div >
+                    <h2 className="text-2xl mt-10 mb-6 text-center font-bold ">Imágenes convertidas:</h2>
                     <div className="flex flex-wrap justify-center">
-                        {urls.map((url, i) => (
-                            <img key={i} src={url} alt={`img-${i}`} style={{ maxWidth: 150, margin: 10 }} />
-                        ))}
+                        {
+
+                            urls.map((url, i) => {
+
+                                return (
+                                    <div
+                                        key={i}
+                                        className="relative mx-3 my-2 cursor-pointer group"
+                                        onClick={() => handleDownloadByUrl(url, filePreviews[i].file.name.split('.')[0] + '.' + outputFormat)}>
+
+                                        <img
+                                            src={url}
+                                            alt={`img-${i}`}
+                                            className="w-40 h-40 object-cover rounded-lg border border-gray-300 
+                                                    transition-transform duration-300 ease-in-out group-hover:scale-105"/>
+
+                                        <div className="absolute top-2 right-2 bg-gray-200 bg-opacity-60 p-2 rounded-full 
+                                                    transition-transform duration-300 ease-in-out group-hover:scale-110 hover:bg-gray-300">
+                                            <FaDownload className="text-sm text-gray-600" />
+                                        </div>
+                                    </div>
+                                );
+                            })
+
+                        }
                     </div>
                 </div>
             )}
+
         </div>
     );
 };
