@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import archiver from 'archiver';
-import { createWriteStream } from 'fs';
-import { unlink, writeFile, readFile } from 'fs/promises';
-import path from 'path';
-import sharp from 'sharp';
-import { v4 as uuidv4 } from 'uuid';
+
+import { convertImageBuffer, createZipWithImages } from '.';
+
 
 export async function POST(req: Request) {
+
   try {
     const formData = await req.formData();
     const files = formData.getAll('imagenes') as File[];
@@ -16,13 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'No se recibieron archivos.' }, { status: 400 });
     }
 
-    const zipName = `imagenes-${uuidv4()}.zip`;
-    const zipPath = path.join('/tmp', zipName);
-
-    const output = createWriteStream(zipPath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
-
-    archive.pipe(output);
+    const processedFiles: { buffer: Buffer; name: string }[] = [];
 
     for (const file of files) {
       const arrayBuffer = await file.arrayBuffer();
@@ -31,45 +23,16 @@ export async function POST(req: Request) {
       const originalName = file.name.split('.')[0];
       const finalName = `${originalName}.${format}`;
 
-      let image = sharp(buffer);
-
-      // Convertir según el formato
-      switch (format) {
-        case 'webp':
-          image = image.webp({ quality: 80 });
-          break;
-        case 'png':
-          image = image.png({ quality: 80 });
-          break;
-        case 'jpg':
-        case 'jpeg':
-          image = image.jpeg({ quality: 80 });
-          break;
-        case 'avif':
-          image = image.avif({ quality: 80 });
-          break;
-        default:
-          return NextResponse.json({ error: 'Formato no soportado' }, { status: 400 });
-      }
-
-      const convertedBuffer = await image.toBuffer();
-      archive.append(convertedBuffer, { name: finalName });
+      const convertedBuffer = await convertImageBuffer(buffer, format);
+      processedFiles.push({ buffer: convertedBuffer, name: finalName });
     }
 
-    await archive.finalize();
-
-    await new Promise<void>((resolve, reject) => {
-      output.on('close', resolve);
-      output.on('error', reject);
-    });
-
-    const zipBuffer = await readFile(zipPath);
-    await unlink(zipPath);
+    const { buffer: zipBuffer, fileName } = await createZipWithImages(processedFiles);
 
     return new Response(zipBuffer, {
       headers: {
         'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename="${zipName}"`,
+        'Content-Disposition': `attachment; filename="${fileName}"`,
       }
     });
 
