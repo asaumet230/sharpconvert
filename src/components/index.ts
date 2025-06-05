@@ -1,2 +1,2 @@
-export * from './imagesCoverted/ImagesConvertedForm';
-export * from './spinners/SpinnerLoadImages';
+export * from './imagesCoverted/index';
+export * from './ui/index'; 

@@ -3,32 +3,43 @@
 import { useRef, useState } from 'react';
 
 import Swal from 'sweetalert2';
-import { FaDownload } from 'react-icons/fa6';
 
-import { SpinnerLoadImages } from '..';
-import { isImagesLoad } from '@/store/imageComponentsLoad/imagesComponentsLoad';
+import { UploadProgressOverlay } from '..';
 
-import { ConvertActions, DownloadActions, FilePreviewList, FileUploader, FormatSelector } from '.';
+import {
+    ConvertActions,
+    ConvertedImageGallery,
+    DownloadActions,
+    FilePreviewList,
+    FileUploader,
+    FormatSelector,
+    EmptyFileNotice
+} from '.';
 
 import { useAppDispatch, useAppSelector } from '@/store';
-import { ImagePreview } from '@/interfaces';
+import { isImagesLoad } from '@/store/imageComponentsLoad/imagesComponentsLoad';
+
+import { ConvertedImage, ImagePreview } from '@/interfaces';
+import { triggerBlobDownload } from '@/helpers';
+import { convertImagesService, downloadImagesZipService } from '@/services';
 
 export const ImagesForm = () => {
 
-    const [urls, setUrls] = useState<string[]>([]);
+    const [conversionFinished, setConversionFinished] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [globalProgress, setGlobalProgress] = useState(0);
+
     const [outputFormat, setOutputFormat] = useState('webp');
+    const [urls, setUrls] = useState<string[]>([]);
+
     const [filePreviews, setFilePreviews] = useState<ImagePreview[]>([]);
     const [filesToConvert, setFilesToConvert] = useState<FileList | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [conversionFinished, setConversionFinished] = useState(false);
+
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const [globalProgress, setGlobalProgress] = useState(0);
-    const [isLoading, setIsLoading] = useState(false);
-
-
-    const imagesLoad = useAppSelector(state => state.imagesComponentsLoad.isImagesLoad);
     const dispatch = useAppDispatch();
+    const imagesLoad = useAppSelector(state => state.imagesComponentsLoad.isImagesLoad);
 
     const allowedTypes = [
         'image/jpeg',
@@ -38,7 +49,7 @@ export const ImagesForm = () => {
         'image/avif',
     ];
 
-    const validateAndStoreFiles = (files: FileList) => {
+    const validateAndStoreFiles = (files: FileList | null) => {
 
         if (!files || files.length === 0) {
             Swal.fire('¡Ups!', 'Selecciona al menos una imagen.', 'warning');
@@ -88,18 +99,6 @@ export const ImagesForm = () => {
         validateAndStoreFiles(files);
     };
 
-    const handleRemoveFile = (index: number) => {
-
-        const updated = [...filePreviews];
-
-        updated.splice(index, 1);
-        setFilePreviews(updated);
-
-        const updatedFiles = new DataTransfer();
-        updated.forEach(p => updatedFiles.items.add(p.file));
-        setFilesToConvert(updatedFiles.files);
-    };
-
     const handleConvert = async () => {
 
         if (!filesToConvert || filesToConvert.length === 0) {
@@ -111,84 +110,53 @@ export const ImagesForm = () => {
         setGlobalProgress(0);
 
         let progress = 0;
-
         const interval = setInterval(() => {
-
             progress += Math.floor(Math.random() * 5) + 3;
             setGlobalProgress(p => Math.min(progress, 95));
             if (progress >= 95) clearInterval(interval);
-
         }, 100);
 
-        const formData = new FormData();
-        formData.append('format', outputFormat);
-
-        Array.from(filesToConvert).forEach(file => {
-            formData.append('imagenes', file);
-        });
-
-        const res = await fetch('/api/images-test', {
-            method: 'POST',
-            body: formData,
-        });
-
+        const result = await convertImagesService(filesToConvert, outputFormat);
 
         clearInterval(interval);
         setGlobalProgress(100);
-
         await new Promise(resolve => setTimeout(resolve, 400));
 
-        const data = await res.json();
-
-        if (data.files) {
-
+        if (result && result.files) {
             const updatedPreviews = filePreviews.map((preview, index) => ({
                 ...preview,
-                convertedSizeKB: data.files[index]?.sizeKB ?? 0
+                convertedSizeKB: result.files[index]?.sizeKB ?? 0
             }));
 
             setConversionFinished(true);
             setFilePreviews(updatedPreviews);
-            setUrls(data.files.map((f: any) => `data:image/${outputFormat};base64,${f.base64}`));
+            setUrls(
+                result.files.map((f: ConvertedImage) =>
+                    `data:image/${outputFormat};base64,${f.base64}`
+                )
+            );
 
             Swal.fire('¡Listo!', 'Las imágenes fueron convertidas con éxito.', 'success');
         } else {
             Swal.fire('Error', 'Hubo un problema al convertir las imágenes.', 'error');
         }
     };
-
+    
     const handleDownloadAllAsZip = async () => {
+
         if (!filesToConvert || filesToConvert.length === 0) {
             Swal.fire('¡Ups!', 'Primero debes seleccionar imágenes válidas.', 'warning');
             return;
         }
 
-        const formData = new FormData();
-        formData.append('format', outputFormat);
+        const blob = await downloadImagesZipService(filesToConvert, outputFormat);
 
-        Array.from(filesToConvert).forEach(file => {
-            formData.append('imagenes', file); // Este campo es leído por el backend
-        });
-
-        const response = await fetch('/api/download-zip', {
-            method: 'POST',
-            body: formData,
-        });
-
-        if (!response.ok) {
+        if (!blob) {
             Swal.fire('Error', 'No se pudo descargar el archivo ZIP.', 'error');
             return;
         }
 
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'imagenes-convertidas.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        triggerBlobDownload(blob, 'imagenes-convertidas.zip');
     };
 
     const handleDownloadByUrl = (url: string, filename: string) => {
@@ -199,6 +167,18 @@ export const ImagesForm = () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const handleRemoveFile = (index: number) => {
+
+        const updated = [...filePreviews];
+
+        updated.splice(index, 1);
+        setFilePreviews(updated);
+
+        const updatedFiles = new DataTransfer();
+        updated.forEach(p => updatedFiles.items.add(p.file));
+        setFilesToConvert(updatedFiles.files);
     };
 
     const handleReset = () => {
@@ -213,6 +193,8 @@ export const ImagesForm = () => {
         dispatch(isImagesLoad(false));
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
+
+
 
 
     return (
@@ -231,7 +213,7 @@ export const ImagesForm = () => {
                 multiple
                 accept="image/*"
                 ref={fileInputRef}
-                onChange={(e) => validateAndStoreFiles(e.target.files!)}
+                onChange={(e) => validateAndStoreFiles(e.target.files)}
                 className="hidden" />
 
             {
@@ -245,76 +227,50 @@ export const ImagesForm = () => {
                     />
 
                 ) : (
-                    <SpinnerLoadImages />
+                    <UploadProgressOverlay />
                 )
             }
 
             {
                 imagesLoad && !conversionFinished && (
-                    <ConvertActions 
-                        handleConvert={handleConvert} 
+                    <ConvertActions
+                        handleConvert={handleConvert}
                         handleReset={handleReset} />
                 )
             }
             {
                 imagesLoad && conversionFinished && (
-                    <DownloadActions 
-                        handleDownloadAllAsZip={handleDownloadAllAsZip} 
-                        handleReset={handleReset}/>
+                    <DownloadActions
+                        handleDownloadAllAsZip={handleDownloadAllAsZip}
+                        handleReset={handleReset} />
                 )
             }
 
             {
                 imagesLoad && (
-                    <FilePreviewList 
-                        filePreviews={filePreviews} 
+                    <FilePreviewList
+                        filePreviews={filePreviews}
                         urls={urls}
                         isLoading={isLoading}
                         globalProgress={globalProgress}
                         outputFormat={outputFormat}
                         handleDownloadByUrl={handleDownloadByUrl}
-                        handleRemoveFile={handleRemoveFile}/>
-                    )
+                        handleRemoveFile={handleRemoveFile} />
+                )
             }
 
             {
-                filePreviews.length <= 0 && (<div className="text-center text-gray-500 text-sm font-medium">
-                    No has seleccionado ningún archivo. Puedes convertir hasta 20 imágenes por carga.
-                </div>)
+                filePreviews.length === 0 && (<EmptyFileNotice noticeText='No has seleccionado ningún archivo. Puedes convertir hasta 20 imágenes por carga.' />)
             }
 
             {urls.length > 0 && (
-                <div >
-                    <h2 className="text-2xl mt-10 mb-6 text-center font-bold ">Imágenes convertidas:</h2>
-                    <div className="flex flex-wrap justify-center">
-                        {
-
-                            urls.map((url, i) => {
-
-                                return (
-                                    <div
-                                        key={i}
-                                        className="relative mx-3 my-2 cursor-pointer group"
-                                        onClick={() => handleDownloadByUrl(url, filePreviews[i].file.name.split('.')[0] + '.' + outputFormat)}>
-
-                                        <img
-                                            src={url}
-                                            alt={`img-${i}`}
-                                            className="w-40 h-40 object-cover rounded-lg border border-gray-300 
-                                                    transition-transform duration-300 ease-in-out group-hover:scale-105"/>
-
-                                        <div className="absolute top-2 right-2 bg-gray-200 bg-opacity-60 p-2 rounded-full 
-                                                    transition-transform duration-300 ease-in-out group-hover:scale-110 hover:bg-gray-300">
-                                            <FaDownload className="text-sm text-gray-600" />
-                                        </div>
-                                    </div>
-                                );
-                            })
-
-                        }
-                    </div>
-                </div>
-            )}
+                <ConvertedImageGallery
+                    urls={urls}
+                    filePreviews={filePreviews}
+                    outputFormat={outputFormat}
+                    handleDownloadByUrl={handleDownloadByUrl} />
+            )
+            }
 
         </div>
     );
