@@ -1,2 +1,2 @@
-export * from './images/ImagesForm';
+export * from './imagesCoverted/ImagesConvertedForm';
 export * from './spinners/SpinnerLoadImages';
