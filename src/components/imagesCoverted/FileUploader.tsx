@@ -3,6 +3,7 @@ import { RefObject } from "react";
 import Image from "next/image";
 
 import { FaUpload } from "react-icons/fa6";
+import 'animate.css';
 
 interface FileUploaderProps {
     handleDrop: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -27,7 +28,7 @@ export const FileUploader = ({
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             className={
-                `my-10 w-full bg-gray-100 max-w-md h-80 border-3 border-dashed rounded-lg flex flex-col items-center justify-center 
+                `my-10 w-full bg-gray-100 max-w-md h-80 border-3 border-dashed rounded-lg flex flex-col items-center justify-center animate__animated animate__fadeIn
                         ${isDragging ? 'border-indigo-500 bg-indigo-100' : 'border-gray-400'}`}>
 
             <Image

@@ -1,3 +1,5 @@
+import 'animate.css';
+
 interface ProgressBarProps {
     globalProgress: number;
 }
@@ -5,7 +7,7 @@ interface ProgressBarProps {
 export const ProgressBar = ({ globalProgress }: ProgressBarProps) => {
 
     return (
-        <div className="w-3/12 mx-5">
+        <div className="w-3/12 mx-5 animate__animated animate__fadeIn">
             <div className="relative w-full h-6 bg-gray-200 rounded-full overflow-hidden">
                 <div
                     className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out"

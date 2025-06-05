@@ -2,6 +2,8 @@ import { FaDownload } from "react-icons/fa6";
 
 import { ImagePreview } from "@/interfaces";
 
+import 'animate.css';
+
 interface ConvertedImageGalleryProps {
     urls: string[];
     filePreviews: ImagePreview[];
@@ -16,7 +18,7 @@ export const ConvertedImageGallery = ({
     handleDownloadByUrl
 }: ConvertedImageGalleryProps) => {
     return (
-        <div >
+        <div className="animate__animated animate__fadeIn" >
             <h2 className="text-2xl mt-10 mb-6 text-center font-bold ">Imágenes convertidas:</h2>
             <div className="flex flex-wrap justify-center">
                 {

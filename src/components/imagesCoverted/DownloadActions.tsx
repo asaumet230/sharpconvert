@@ -1,6 +1,7 @@
 import { FaSyncAlt } from "react-icons/fa";
 import { FaDownload } from "react-icons/fa6";
 
+import 'animate.css';
 
 interface DownloadActionsProps {
     handleDownloadAllAsZip: () => void;
@@ -9,7 +10,7 @@ interface DownloadActionsProps {
 
 export const DownloadActions = ({ handleDownloadAllAsZip, handleReset }: DownloadActionsProps) => {
     return (
-        <div className='flex gap-4 justify-center w-7/12 my-10'>
+        <div className='flex gap-4 justify-center w-7/12 my-10 animate__animated animate__fadeIn'>
             <button
                 className='flex justify-center items-center gap-2 cursor-pointer w-full p-3 font-semibold bg-blue-600 text-white rounded-md text-base hover:bg-blue-700 transition-colors'
                 onClick={handleDownloadAllAsZip}>

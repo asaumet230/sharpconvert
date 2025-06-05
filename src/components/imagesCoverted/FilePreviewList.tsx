@@ -1,9 +1,9 @@
-import { FaTrashCan } from "react-icons/fa6";
-
 import { ProgressBar } from "../ui";
 import { DownloadInfo, RemoveFileButton } from ".";
 
 import { ImagePreview } from "@/interfaces";
+
+import 'animate.css';
 
 interface FilePreviewListProps{
   filePreviews: ImagePreview[];
@@ -25,7 +25,7 @@ export const FilePreviewList = ({
     handleRemoveFile
 }:FilePreviewListProps) => {
     return (
-        <div className="w-full max-w-3xl mt-6 space-y-4">
+        <div className="w-full max-w-3xl mt-6 space-y-4 animate__animated animate__fadeIn">
             {
                 filePreviews.map((item, index) => (
 

@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useAppDispatch } from "@/store";
 import { isImagesLoad } from "@/store/imageComponentsLoad/imagesComponentsLoad";
 
+import 'animate.css';
+
 export const UploadProgressOverlay = () => {
 
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -30,7 +32,7 @@ export const UploadProgressOverlay = () => {
     }, [uploadProgress]);
 
     return (
-        <div className={`h-80 w-full mx-auto flex flex-col items-center justify-center ${uploadProgress < 100 ? 'opacity-100' : 'opacity-0 hidden transition duration-500'}`}>
+        <div className={`h-80 w-full mx-auto flex flex-col items-center justify-center animate__animated animate__fadeIn ${uploadProgress < 100 ? 'opacity-100' : 'opacity-0 hidden transition duration-500'}`}>
             <h2 className="text-lg text-gray-700 font-medium mb-2">Cargando imágenes...</h2>
             <div className="relative w-7/12 h-8 bg-gray-200 rounded-full overflow-hidden">
                 <div

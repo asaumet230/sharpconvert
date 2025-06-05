@@ -1,13 +1,14 @@
+import 'animate.css';
 
 interface  FormatSelectorProps {
   outputFormat: string;
   setOutputFormat: (format: string) => void;
 };
 
-export const FormatSelector = ({outputFormat, setOutputFormat}: FormatSelectorProps) => {
+export const FormatSelector = ({outputFormat, setOutputFormat }: FormatSelectorProps) => {
   
   return (
-    <div className='mt-4'>
+    <div className='mt-4 animate__animated animate__fadeIn'>
       <label className='font-semibold mr-5 text-2xl'>Formato de salida:</label>
       <select
         className='p-4 font-semibold text-indigo-600 border-2 border-indigo-300 rounded-md text-lg'
