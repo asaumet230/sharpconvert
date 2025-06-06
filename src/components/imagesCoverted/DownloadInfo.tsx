@@ -20,7 +20,7 @@ export const DownloadInfo = ({
 }: DownloadInfoProps) => {
 
     return (
-        <div className='flex flex-col justify-center items-center mr-2 ml-5 animate__animated animate__fadeIn'>
+        <div className='flex flex-col justify-center items-center animate__animated animate__fadeIn'>
             <button
                 onClick={() => handleDownloadByUrl(urls[index], filePreviews[index].file.name.split('.')[0] + '.' + outputFormat)}
                 className='flex items-center justify-center cursor-pointer text-white py-0.5 px-3 mb-0.5 border rounded-lg bg-blue-600 hover:bg-blue-700'>

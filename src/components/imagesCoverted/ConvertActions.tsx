@@ -10,7 +10,7 @@ interface ConvertActionsProps {
 export const ConvertActions = ({handleConvert, handleReset}: ConvertActionsProps) => {
 
     return (
-        <div className='flex gap-4 justify-center w-7/12 my-10 animate__animated animate__fadeIn'>
+        <div className='flex flex-col sm:flex-row gap-4 justify-center w-10/12 sm:w-7/12 md:w-9/12 my-10 animate__animated animate__fadeIn'>
             <button
                 className='flex justify-center items-center gap-2  cursor-pointer w-full p-3 font-semibold bg-yellow-400 text-black rounded-md text-base hover:bg-yellow-500 transition-colors'
                 onClick={handleConvert}>
