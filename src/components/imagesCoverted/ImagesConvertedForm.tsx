@@ -136,12 +136,13 @@ export const ImagesForm = () => {
                 )
             );
 
-            Swal.fire('¡Listo!', 'Las imágenes fueron convertidas con éxito.', 'success');
+            filesToConvert.length === 1 ? Swal.fire('¡Listo!', 'La imagen fue convertida con éxito.', 'success') : Swal.fire('¡Listo!', 'Las imágenes fueron convertidas con éxito.', 'success') 
+            
         } else {
             Swal.fire('Error', 'Hubo un problema al convertir las imágenes.', 'error');
         }
     };
-    
+
     const handleDownloadAllAsZip = async () => {
 
         if (!filesToConvert || filesToConvert.length === 0) {
@@ -227,13 +228,14 @@ export const ImagesForm = () => {
                     />
 
                 ) : (
-                    <UploadProgressOverlay />
+                    <UploadProgressOverlay filesToConvert={filesToConvert} />
                 )
             }
 
             {
                 imagesLoad && !conversionFinished && (
                     <ConvertActions
+                        filesToConvert={filesToConvert}
                         handleConvert={handleConvert}
                         handleReset={handleReset} />
                 )
@@ -241,6 +243,7 @@ export const ImagesForm = () => {
             {
                 imagesLoad && conversionFinished && (
                     <DownloadActions
+                        filesToConvert={filesToConvert}
                         handleDownloadAllAsZip={handleDownloadAllAsZip}
                         handleReset={handleReset} />
                 )

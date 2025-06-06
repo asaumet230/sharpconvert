@@ -7,7 +7,11 @@ import { isImagesLoad } from "@/store/imageComponentsLoad/imagesComponentsLoad";
 
 import 'animate.css';
 
-export const UploadProgressOverlay = () => {
+interface UploadProgressOverlayProps {
+    filesToConvert: FileList | null;
+}
+
+export const UploadProgressOverlay = ({ filesToConvert }:UploadProgressOverlayProps) => {
 
     const [uploadProgress, setUploadProgress] = useState(0);
     const dispatch = useAppDispatch();
@@ -35,7 +39,7 @@ export const UploadProgressOverlay = () => {
         <div className={`h-80 w-full mx-auto flex flex-col items-center justify-center animate__animated animate__fadeIn 
             ${uploadProgress < 100 ? 'opacity-100' : 'opacity-0 hidden transition duration-500'}`}>
 
-            <h2 className="text-lg text-gray-700 font-medium mb-2">Cargando imágenes...</h2>
+            <h2 className="text-lg text-gray-700 font-medium mb-2">{ filesToConvert?.length ===1 ? 'Cargando imagen...' : 'Cargando imágenes...'}</h2>
             <div className="relative w-11/12 sm:w-9/12 md:w-7/12 h-8 bg-gray-200 rounded-full overflow-hidden">
                 <div
                     className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out"
