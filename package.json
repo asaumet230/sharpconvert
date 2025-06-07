@@ -1,7 +1,15 @@
 {
   "name": "images-app",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Sharpconvert is a fast and intuitive web application that allows users to convert multiple images into different formats",
+  "main": "src/page.tsx",
+  "author": "Andres Felipe Saumet <andressaumet@gmail.com> (https://www.andressaumet.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asaumet230/sharpconvert"
+  },
+  "homepage": "https://www.andressaumet.com",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
