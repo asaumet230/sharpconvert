@@ -1,4 +1,4 @@
-import { ProgressBar } from "../ui";
+import { PreviewProgressBar } from "../ui";
 import { DownloadInfo, RemoveFileButton } from ".";
 
 import { ImagePreview } from "@/interfaces";
@@ -43,7 +43,7 @@ export const FilePreviewList = ({
 
 
                         <div className={`flex flex-col items-center justify-center ${!isLoading && 'hidden'} w-6/12 sm:flex-row`}>
-                            { isLoading && (<ProgressBar globalProgress={globalProgress} />)}
+                            { isLoading && (<PreviewProgressBar globalProgress={globalProgress} />)}
 
                             {
                                 globalProgress === 100 && urls[index] && (

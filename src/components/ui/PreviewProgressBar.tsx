@@ -4,7 +4,7 @@ interface ProgressBarProps {
     globalProgress: number;
 }
 
-export const ProgressBar = ({ globalProgress }: ProgressBarProps) => {
+export const PreviewProgressBar = ({ globalProgress }: ProgressBarProps) => {
 
     return (
         <div className="w-7/12 sm:w-5/12 mb-2 mx-auto animate__animated animate__fadeIn">
@@ -21,4 +21,4 @@ export const ProgressBar = ({ globalProgress }: ProgressBarProps) => {
     )
 }
 
-export default ProgressBar;
+export default PreviewProgressBar;
